@@ -6,7 +6,7 @@ import sys
 from color import Color
 
 try:
-    import spidev
+    from spidev import SpiDev
 except ImportError as e:
     print("Failed to import SPI library:", e)
     sys.exit(-1)
@@ -39,50 +39,60 @@ class Matrix(object):
         if spidevice != 1:
             spidevice = 0
 
-        self.__spi = spidev.SpiDev()
-        self.__spi.bits_per_word = 8
+        self.__spi = SpiDev()
         self.__spi.mode = 0b01
-        spidev.open(0, spidev)
+        self.__spi.open(0, spidevice)
 
-        self.__buffer = bytearray([0] * 24)
-
-    def clear(self):
-        '''
-            Clears both the internal buffer and the matrix.
-        '''
-        self.__buffer = bytearray([0] * 24)
-        self.write()
+        self.__buffer = [0] * 24
 
     def drawpixel(self, pixel):
         '''
             Draws a given Pixel object to the internal buffer.
-            The buffer is formed of 24 bytes. Each 3 bytes represents the
-            coloring of the pixel on that particular row/column.
+            The buffer is formed of 24 bytes.
+            Each byte represents a single color, the n'th bit being whether
+            that particular color is active in the n'th led of that row.
+            The colors are ordered in reverse. (BGR).
 
             @param: pixel - a Pixel object.
 
             @return: the Pixel encoded as a byte.
         '''
-        # coordinates of the byte containing the pixel:
+        # current row we're on:
         row = 3 * pixel.y
-        column = pixel.x / 8
 
-        # clear currently present color:
-        self.__buffer[row + column] &= ~(1 << pixel.x)
-        self.__buffer[row + column + 1] &= ~(1 << pixel.x)
-        self.__buffer[row + column + 2] &= ~(1 << pixel.x)
+        # clear currently present color by unsetting the corresponding bit from
+        # the three color bytes:
+        self.__buffer[row] &= ~(1 << pixel.x)       # clear red.
+        self.__buffer[row + 1] &= ~(1 << pixel.x)   # clear green.
+        self.__buffer[row + 2] &= ~(1 << pixel.x)   # clear blue.
 
-        # configure new color:
-        if pixel.color & Color.blue:
-            self.__buffer[row + column] |= 1 << pixel.x
-        if pixel.color & Color.green:
-            self.__buffer[row + column + 1] |= 1 << pixel.y
-        if pixel.color & Color.red:
-            self.__buffer[row + column + 2] |= 1 << pixel.y
+        # set red bit for this pixel, if necessary:
+        if pixel.color in [Color.red, Color.white, Color.brown, Color.purple]:
+            self.__buffer[row] |= 1 << pixel.x
+        # set green bit:
+        if pixel.color in [Color.green, Color.white, Color.turquoise, Color.brown]:
+            self.__buffer[row + 1] |= 1 << pixel.x
+        # set blue bit:
+        if pixel.color in [Color.blue, Color.white, Color.turquoise, Color.purple]:
+            self.__buffer[row + 2] |= 1 << pixel.x
 
     def write(self):
         '''
             Serially writes the whole of the video buffer to the matrix.
         '''
-        self.__spi.xfer(self.__buffer, delay=10)
+        self.__spi.xfer(self.__buffer)
+
+    def clear(self):
+        '''
+            Clears both the internal buffer and the matrix.
+        '''
+        self.__buffer = [0] * 24
+        self.write()
+
+    def cleanup(self):
+        '''
+            Clears all registers and terminates the SPI connection.
+        '''
+        self.clear()
+        self.__spi.close()
 
