@@ -4,8 +4,9 @@ from pytris.color import Color
 class Shape(object):
     def __init__(self):
         self.states = [[]]
-        self._current_state = 0
         self.color = Color.blue
+
+        self._current_state = 0
 
     def rotate_cw(self):
         self._rotate(1)

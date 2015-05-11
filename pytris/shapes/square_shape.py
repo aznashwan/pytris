@@ -1,8 +1,6 @@
 from pytris.color import Color
 from pytris.shapes.shape import Shape
 
-__author__ = 'krotz'
-
 
 class SquareShape(Shape):
     def __init__(self):
