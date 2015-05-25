@@ -26,7 +26,7 @@ class Game(object):
 
     def run(self):
         previous = time()
-        lag = 0
+        lag = 0.
 
         while True:
             current = time()
@@ -34,7 +34,7 @@ class Game(object):
             previous = current
             lag += elapsed
 
-            # Process input here..
+            self.process_input()
 
             while lag >= self._rate:
                 self._update()
@@ -59,10 +59,11 @@ class Game(object):
         self.falling_piece.warp(self._board.get_spawn())
 
     def finish(self):
+        # TODO finish here
         print('FINISHING')
 
     def _increase_score(self, amount):
         self._score += amount * 10
 
     def process_input(self):
-        print(get_key())
+        pass  # print(get_key())
