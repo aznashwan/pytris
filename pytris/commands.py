@@ -1,6 +1,7 @@
 import queue
 from threading import Thread
 import time
+
 from pytris.keyboard import get_key
 
 
@@ -10,29 +11,28 @@ class Commands(object):
         self.commands = queue.Queue(0)
 
         Thread(target=self.control).start()
-        Thread(target=self.process).start()
+
+        self._instructions = {
+            "q": self._game.finish,
+            "a": self._game.falling_move_left,
+            "d": self._game.falling_move_right,
+            " ": self._game.falling_rotate
+        }
 
     def control(self):
-        while 1:
+        while 1 and self._game.running:
             command = get_key()
             self.commands.put(command)
+            time.sleep(0.016)
 
-            if command == self._game.BTN_EXIT:
+            if command == "q":
                 break
 
     def process(self):
-        while 1:
-            try:
-                command = self.commands.get(False)
-            except queue.Empty as e:
-                command = ""
+        while not self.commands.empty():
+            command = self.commands.get(False)
 
-            if command == "q":
-                self._game.finish()
-                break
+            if command in self._instructions:
+                self._instructions[command]()
 
-            # TODO process command input and callback in game
-
-            # wait anyway for a second, you can tweak that
-            time.sleep(1./self._game.FPS)
-
+            time.sleep(0.016)

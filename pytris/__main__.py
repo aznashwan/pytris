@@ -40,6 +40,4 @@
 
 from pytris.game import Game
 game = Game()
-
-while True:
-    game.process_input()
+game.run()

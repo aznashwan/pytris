@@ -16,7 +16,7 @@ class Board(object):
                 return False
         return True
 
-    def check_collision(self, piece):
+    def check_overlap(self, piece):
         for x, y in piece.coordinates:
             if self.check_on_board(piece) and self._board[y][x] is not None:
                 return False
@@ -31,6 +31,14 @@ class Board(object):
 
         return k
 
+    def get_active_blocks(self):
+        blocks = []
+        for row_k, row in enumerate(self._board):
+            for col_k, item in enumerate(row):
+                if item is not None:
+                    blocks.append((row_k, col_k, item))
+        return blocks
+
     def _get_full_rows(self):
         rows = []
 
@@ -39,6 +47,11 @@ class Board(object):
                 rows.append(row_index)
 
         return rows
+
+    def lock(self, piece):
+        blocks = piece.coordinates
+        for (x, y) in blocks:
+            self._board[x][y] = piece.color
 
     @staticmethod
     def get_spawn():

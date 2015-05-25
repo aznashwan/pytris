@@ -41,9 +41,6 @@ class Tetramino(object):
             self._shape.rotate_ccw()
         self._occupied_coordinates()
 
-    # TODO on rotate shift on the board :D
-    # TODO game logic and keyboard interrupts
-
     def _occupied_coordinates(self):
         state = self._shape.current_state()
         occupied_coordinates = []
