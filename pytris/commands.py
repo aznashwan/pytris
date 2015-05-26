@@ -13,10 +13,11 @@ class Commands(object):
         Thread(target=self.control).start()
 
         self._instructions = {
-            "q": self._game.finish,
-            "a": self._game.falling_move_left,
-            "d": self._game.falling_move_right,
-            " ": self._game.falling_rotate
+            "w": self._game.queue_up,
+            "a": self._game.queue_left,
+            "s": self._game.queue_down,
+            "d": self._game.queue_right,
+            " ": self._game.finish
         }
 
     def control(self):
@@ -25,7 +26,7 @@ class Commands(object):
             self.commands.put(command)
             time.sleep(0.016)
 
-            if command == "q":
+            if command == " ":
                 break
 
     def process(self):
