@@ -1,4 +1,5 @@
 import copy
+from time import time
 from snake.collision import Collision
 from snake.color import Color
 from snake.commands import Commands
@@ -8,12 +9,16 @@ from random import randint
 
 
 class Snake(object):
-    WIDTH  = 8
+    WIDTH = 8
     HEIGHT = 8
+
+    TICK_PER_SECOND = 60
+    SKIP_TICKS = 1000 / TICK_PER_SECOND
+    MAX_FRAME_SKIP = 5
 
     SNAKE_HEAD_COLOR = Color.green
     SNAKE_BODY_COLOR = Color.purple
-    FOOD_COLOR       = Color.white
+    FOOD_COLOR = Color.white
 
     DIRECTIONS = {
         "right": (1, 0),
@@ -23,60 +28,69 @@ class Snake(object):
     }
 
     def __init__(self, board):
-        self.segments = [Pixel(3, 4, self.SNAKE_HEAD_COLOR), Pixel(4, 4, self.SNAKE_BODY_COLOR)]
-        self.food     = self.spawn_food()
-        self.last_direction = self.DIRECTIONS["right"]
-        self.read_direction = None
+        self.food = None
         self.score = 0
         self.running = True
         self.lost = False
 
+        self.segments = [Pixel(1, 4, self.SNAKE_HEAD_COLOR), Pixel(0, 4, self.SNAKE_BODY_COLOR)]
+        self.spawn_food()
+
+        self.last_direction = self.DIRECTIONS["right"]
+        self.read_direction = None
+
         self.board = board
         self.commands = Commands(self)
-        # self.lcd = LCD()
-
-    def run(self):
-        while self.running:
-            self.board.clear()
-            self.ripple()
-            self.draw()
-            #self.lcd.clear()
-            #self.lcd.writeline("Score %s" % self.score)
+        self.lcd = LCD()
 
         self.board.clear()
+        self.lcd.clear()
+
+    def run(self):
+        next_update = time()
+        while self.running:
+            loops = 0
+            while time() > next_update and loops < self.MAX_FRAME_SKIP:
+                self.commands.process()
+                self.ripple()
+
+                next_update += self.SKIP_TICKS
+                loops += 1
+
+            self.draw()
+
         self.draw_end()
-
-    def queue_up(self):
-        self.read_direction = self.DIRECTIONS["up"]
-
-    def queue_down(self):
-        self.read_direction = self.DIRECTIONS["down"]
-
-    def queue_left(self):
-        self.read_direction = self.DIRECTIONS["left"]
-
-    def queue_right(self):
-        self.read_direction = self.DIRECTIONS["right"]
-
-    def finish(self):
-        self.running = False
-        self.lost    = True
 
     def draw(self):
         for segment in self.segments:
             self.board.write_pixel(segment)
 
+        self.board.clear()
         self.board.write_pixel(self.food)
         self.board.write()
 
+        self.lcd.clear()
+        self.lcd.writeline("Score {:s}".format(self.score))
+
     def draw_end(self):
-        if self.lost:
-            pass # TODO add lose screen
+        if not self.lost:
+            return
+
+        red = Color.red
+        # Giant red X
+        lose_pixels = [(0, 0, red), (1, 1, red), (2, 2, red), (3, 3, red),
+                       (4, 4, red), (5, 5, red), (6, 6, red), (7, 7, red),
+                       (7, 0, red), (6, 1, red), (5, 2, red), (4, 3, red),
+                       (3, 4, red), (2, 5, red), (1, 6, red), (0, 7, red)]
+        self.board.clear()
+        for pixel in lose_pixels:
+            self.board.write_pixel(pixel)
+        self.board.write()
 
     def spawn_food(self):
         while True:
-            x = randint(0, self.WIDTH)
-            y = randint(0, self.HEIGHT)
+            x = randint(0, self.WIDTH - 1)
+            y = randint(0, self.HEIGHT - 1)
 
             collisions = 0
             for segment in self.segments:
@@ -85,9 +99,26 @@ class Snake(object):
                     break
 
             if 0 == collisions:
-                return Pixel(x, y, self.FOOD_COLOR)
+                self.food = Pixel(x, y, self.FOOD_COLOR)
+                break
 
-    def check_collisions(self):
+    def _update_motion(self):
+        head = self.segments[0]
+        body = self.segments[1]
+
+        # update the move direction making sure that the snake can't 180
+        if self.read_direction is not None:
+            delta = self.read_direction
+            new_head = copy.copy(head)
+            new_head.x = head.x + delta[0]
+            new_head.y = head.y + delta[1]
+
+            if not (new_head.x == body.x and new_head.y == body.y):
+                self.last_direction = delta
+
+            self.read_direction = None
+
+    def _check_collisions(self):
         head = self.segments[0]
         for segment in self.segments[1:]:
             if segment.x == head.x and segment.y == head.y:
@@ -98,41 +129,32 @@ class Snake(object):
         return Collision.NONE
 
     def ripple(self):
+        self._update_motion()
+
         head = self.segments[0]
-        body = self.segments[1]
-        if self.read_direction is not None:
-            delta = self.read_direction
-            new_head = copy.copy(head)
-            new_head.x = head.x + delta.x
-            new_head.y = head.y + delta.y
+        new_head = copy.deepcopy(head)
+        new_head.x = (head.x + self.last_direction[0]) % self.WIDTH
+        new_head.y = (head.y + self.last_direction[1]) % self.HEIGHT
+        head.color = self.SNAKE_BODY_COLOR
 
-            if not(new_head.x == body.x and new_head.y == body.y):
-                self.last_direction = delta
+        # Add a new segment as the new head
+        self.segments.insert(0, new_head)
 
-            self.read_direction = None
-
-        old_head = copy.copy(head)
-        head.x = self.last_direction[0] % self.WIDTH
-        head.y = self.last_direction[1] % self.HEIGHT
-
-        collision_type = self.check_collisions()
+        collision_type = self._check_collisions()
         if collision_type is Collision.FOOD:
-            old_head.color = self.SNAKE_BODY_COLOR
-            self.segments.insert(1, old_head)
             self.spawn_food()
-            self.score += 10
+            self.score += 1
         elif collision_type is Collision.SEGMENT:
-            head = old_head
+            self.segments.pop(0)
+            self.segments[0].color = self.SNAKE_HEAD_COLOR
             self.running = False
             self.lost = True
         else:
-            # Head is moved only move body
-            for segment in self.segments[1:]:
-                seg_copy  = copy.copy(segment)
-                segment.x = old_head.x
-                segment.y = old_head.y
-
-                old_head  = seg_copy
+            self.segments.pop()
 
         if len(self.segments) == self.WIDTH * self.HEIGHT:
             self.running = False
+
+    def finish(self):
+        self.running = False
+        self.lost = True
