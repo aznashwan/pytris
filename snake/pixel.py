@@ -14,3 +14,6 @@ class Pixel(object):
         self.x = x
         self.y = y
         self.color = color
+
+    def __repr__(self):
+        return ("({:d}, {:d}, {:s})".format(self.x, self.y, self.color))

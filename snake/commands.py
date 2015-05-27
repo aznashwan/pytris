@@ -13,12 +13,15 @@ class Commands(object):
         Thread(target=self.control).start()
 
         self._instructions = {
-            "w": self._game.queue_up,
-            "a": self._game.queue_left,
-            "s": self._game.queue_down,
-            "d": self._game.queue_right,
+            "w": self._command_move_helper("up"),
+            "a": self._command_move_helper("left"),
+            "s": self._command_move_helper("down"),
+            "d": self._command_move_helper("right"),
             " ": self._game.finish
         }
+
+    def _command_move_helper(self, direction):
+        self._game.read_direction = self._game.DIRECTIONS[direction]
 
     def control(self):
         while 1 and self._game.running:
