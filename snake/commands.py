@@ -2,7 +2,7 @@ import queue
 from threading import Thread
 import time
 
-from pytris.keyboard import get_key
+from snake.keyboard import get_key
 
 
 class Commands(object):

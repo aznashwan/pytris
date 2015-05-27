@@ -1,9 +1,9 @@
 import copy
-from pytris.collision import Collision
-from pytris.color import Color
-from pytris.commands import Commands
-from pytris.lcd import LCD
-from pytris.pixel import Pixel
+from snake.collision import Collision
+from snake.color import Color
+from snake.commands import Commands
+from snake.lcd import LCD
+from snake.pixel import Pixel
 from random import randint
 
 

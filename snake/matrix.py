@@ -3,7 +3,7 @@
     Licensed under the GPLv2 license. See LICENSE file for details.
 """
 import sys
-from pytris.color import Color
+from snake.color import Color
 
 try:
     from spidev import SpiDev
